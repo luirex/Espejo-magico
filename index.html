@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Espejo Mágico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=Bangers&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#100e1c;
+    --bg-deep2:#1c1830;
+    --ink:#fff8f0;
+    --ink-dim:#c9c3da;
+    --glass:rgba(255,255,255,0.06);
+    --glass-strong:rgba(255,255,255,0.12);
+    --frame-w:clamp(10px,1.8vw,24px);
+    --radius:clamp(18px,3vw,40px);
+    --accent:#c9a6e8;
+    --accent2:#e8b4c8;
+    --accent3:#f6d78b;
+    --card-bg:#fff6ef;
+    --card-ink:#3f2a3a;
+    --transition-slow:.7s cubic-bezier(.22,.68,0,1.01);
+  }
+  body.theme-princesa{
+    --accent:#e8b4c8;
+    --accent2:#c9a6e8;
+    --accent3:#f6d78b;
+    --card-bg:#fff6ef;
+    --card-ink:#4a2b3a;
+    --title-font:'Cinzel Decorative', serif;
+  }
+  body.theme-heroe{
+    --accent:#ff5a5f;
+    --accent2:#2e6ff2;
+    --accent3:#ffd23f;
+    --card-bg:#12172b;
+    --card-ink:#fff8f0;
+    --title-font:'Bangers', cursive;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{
+    width:100%; height:100%;
+    background:radial-gradient(circle at 50% 20%, var(--bg-deep2), var(--bg-deep) 70%);
+    color:var(--ink);
+    font-family:'Nunito', sans-serif;
+    overflow:hidden;
+  }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+  button:focus-visible, .theme-card:focus-visible{ outline:3px solid var(--accent3); outline-offset:4px; }
+
+  #app{ position:relative; width:100vw; height:100vh; }
+
+  /* ---------- Reactive mirror frame ---------- */
+  .mirror-frame{
+    position:fixed; inset:clamp(8px,1.6vw,22px);
+    border-radius:var(--radius);
+    border:var(--frame-w) solid transparent;
+    border-image:linear-gradient(135deg,var(--accent),var(--accent3) 45%,var(--accent2)) 1;
+    pointer-events:none;
+    z-index:40;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.08) inset,
+      0 0 40px 4px color-mix(in srgb, var(--accent) 45%, transparent);
+    animation:frameGlow 4.5s ease-in-out infinite;
+    transition:border-image 1s ease;
+  }
+  @keyframes frameGlow{
+    0%,100%{ box-shadow:0 0 0 1px rgba(255,255,255,.08) inset, 0 0 30px 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+    50%{ box-shadow:0 0 0 1px rgba(255,255,255,.14) inset, 0 0 60px 8px color-mix(in srgb, var(--accent2) 55%, transparent); }
+  }
+  .medallion{
+    position:fixed; z-index:41; width:clamp(38px,5vw,64px); height:clamp(38px,5vw,64px);
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--accent3), var(--accent));
+    display:flex; align-items:center; justify-content:center;
+    font-size:clamp(18px,2.4vw,30px);
+    box-shadow:0 0 18px color-mix(in srgb, var(--accent) 60%, transparent), inset 0 0 6px rgba(255,255,255,.6);
+    animation:floaty 5s ease-in-out infinite;
+    transition:background 1s ease;
+  }
+  .medallion.tl{ top:clamp(-6px,0vw,0px); left:clamp(-6px,0vw,0px); }
+  .medallion.tr{ top:clamp(-6px,0vw,0px); right:clamp(-6px,0vw,0px); animation-delay:.6s; }
+  .medallion.bl{ bottom:clamp(-6px,0vw,0px); left:clamp(-6px,0vw,0px); animation-delay:1.2s; }
+  .medallion.br{ bottom:clamp(-6px,0vw,0px); right:clamp(-6px,0vw,0px); animation-delay:1.8s; }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-6px) rotate(4deg);} }
+
+  .star{
+    position:fixed; z-index:39; border-radius:50%;
+    background:var(--accent3);
+    box-shadow:0 0 8px 2px var(--accent3);
+    animation:twinkle 3.2s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes twinkle{ 0%,100%{ opacity:.15; transform:scale(.7);} 50%{ opacity:1; transform:scale(1.2);} }
+
+  /* ---------- Screens ---------- */
+  .screen{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none;
+    transition:opacity var(--transition-slow);
+  }
+  .screen.active{ opacity:1; pointer-events:auto; }
+
+  /* ---- Select screen ---- */
+  #screen-select .wrap{
+    display:flex; flex-direction:column; align-items:center; gap:clamp(20px,4vh,48px);
+    text-align:center; padding:0 6vw;
+  }
+  #screen-select h1{
+    font-family:'Fredoka', sans-serif; font-weight:700;
+    font-size:clamp(28px,5vw,64px);
+    background:linear-gradient(90deg,#e8b4c8,#f6d78b,#2e6ff2,#c9a6e8);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    background-size:300% auto;
+    animation:hueSlide 8s linear infinite;
+  }
+  @keyframes hueSlide{ to{ background-position:300% center; } }
+  #screen-select p.tag{ color:var(--ink-dim); font-size:clamp(14px,1.6vw,20px); }
+
+  .choices{ display:flex; gap:clamp(16px,3vw,40px); flex-wrap:wrap; justify-content:center; }
+  .theme-card{
+    width:clamp(190px,22vw,300px); padding:clamp(24px,3vw,40px) clamp(16px,2vw,24px);
+    border-radius:28px;
+    background:var(--glass);
+    border:2px solid var(--glass-strong);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    transition:transform .35s ease, box-shadow .35s ease, background .35s ease;
+  }
+  .theme-card .emoji{ font-size:clamp(42px,6vw,80px); }
+  .theme-card .label{ font-family:'Fredoka',sans-serif; font-weight:600; font-size:clamp(18px,2vw,26px); }
+  .theme-card.princesa:hover, .theme-card.princesa:focus-visible{
+    transform:translateY(-8px) scale(1.03);
+    background:linear-gradient(160deg, rgba(232,180,200,.25), rgba(201,166,232,.18));
+    box-shadow:0 14px 34px rgba(232,180,200,.35);
+  }
+  .theme-card.heroe:hover, .theme-card.heroe:focus-visible{
+    transform:translateY(-8px) scale(1.03);
+    background:linear-gradient(160deg, rgba(255,90,95,.25), rgba(46,111,242,.2));
+    box-shadow:0 14px 34px rgba(46,111,242,.35);
+  }
+
+  /* ---- Name screen ---- */
+  #screen-name .wrap{
+    display:flex; flex-direction:column; align-items:center; gap:clamp(18px,3vh,36px);
+    text-align:center; padding:0 6vw; width:min(560px,88vw);
+  }
+  #screen-name .emoji-big{ font-size:clamp(40px,6vw,70px); }
+  #screen-name h2{
+    font-family:var(--title-font,'Fredoka',sans-serif);
+    font-size:clamp(22px,3vw,38px);
+  }
+  #screen-name p.tag{ color:var(--ink-dim); font-size:clamp(13px,1.4vw,18px); }
+  .name-input{
+    width:100%; font-family:'Fredoka',sans-serif; font-weight:600;
+    font-size:clamp(20px,3vw,32px); text-align:center;
+    padding:clamp(12px,1.8vw,18px) clamp(16px,2vw,22px);
+    border-radius:999px; border:2px solid var(--glass-strong);
+    background:var(--glass); color:var(--ink);
+    outline-offset:4px;
+  }
+  .name-input::placeholder{ color:var(--ink-dim); font-weight:500; }
+  .name-actions{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .btn-continue{
+    background:linear-gradient(120deg,var(--accent),var(--accent3));
+    color:#1c1424; font-weight:800; padding:12px 30px; border-radius:999px;
+    font-size:clamp(15px,1.6vw,19px);
+  }
+  .btn-skip{ color:var(--ink-dim); font-size:clamp(13px,1.3vw,16px); text-decoration:underline; }
+  .name-back{
+    position:absolute; top:clamp(20px,3vh,40px); left:clamp(24px,3vw,48px);
+    font-size:clamp(13px,1.2vw,16px); color:var(--ink-dim);
+    background:var(--glass); padding:8px 16px; border-radius:999px;
+  }
+  .name-back:hover{ color:var(--ink); background:var(--glass-strong); }
+
+  /* ---- Camera screen ---- */
+  #screen-camera{ overflow:hidden; }
+  video{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:contain; transform:scaleX(-1) scale(0.82);
+    transform-origin:center; background:transparent;
+  }
+  .cam-vignette{
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse at center, transparent 40%, rgba(10,8,20,.75) 100%);
+    z-index:5;
+  }
+  .cam-overlay{
+    position:relative; z-index:6; width:100%; height:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    padding:clamp(24px,4vh,56px) 0;
+  }
+  .cam-guide{
+    width:clamp(200px,32vw,420px); height:clamp(280px,46vw,560px);
+    border:3px dashed var(--accent3);
+    border-radius:50% / 45%;
+    opacity:.85;
+    animation:guidePulse 2.4s ease-in-out infinite;
+  }
+  @keyframes guidePulse{ 0%,100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--accent3) 40%, transparent);} 50%{ box-shadow:0 0 0 18px transparent;} }
+  .cam-instruction{
+    font-family:'Fredoka',sans-serif; font-weight:600;
+    font-size:clamp(18px,2.4vw,32px);
+    text-align:center; padding:0 8vw;
+    text-shadow:0 2px 12px rgba(0,0,0,.6);
+  }
+  .countdown{
+    font-family:'Fredoka',sans-serif; font-weight:700;
+    font-size:clamp(60px,10vw,140px);
+    text-shadow:0 4px 24px rgba(0,0,0,.7);
+    color:var(--accent3);
+    min-height:1.2em;
+  }
+  .cam-back{
+    position:absolute; top:clamp(20px,3vh,40px); left:clamp(24px,3vw,48px); z-index:7;
+    font-size:clamp(13px,1.2vw,16px); color:var(--ink-dim);
+    background:var(--glass); padding:8px 16px; border-radius:999px;
+  }
+  .cam-back:hover{ color:var(--ink); background:var(--glass-strong); }
+
+  .cam-error{
+    position:relative; z-index:6; text-align:center; padding:0 8vw;
+    display:none; flex-direction:column; gap:16px; align-items:center;
+  }
+  .cam-error.show{ display:flex; }
+  .cam-error button{
+    background:var(--accent3); color:#241a10; font-weight:800; padding:10px 24px; border-radius:999px;
+  }
+
+  /* ---- Reveal screen ---- */
+  #screen-reveal{ overflow:hidden; }
+  .reveal-dim{
+    position:absolute; inset:0; z-index:5;
+    background:rgba(8,6,16,.55);
+    backdrop-filter:blur(2px);
+  }
+  .card{
+    position:relative; z-index:6;
+    width:min(560px,80vw);
+    background:var(--card-bg); color:var(--card-ink);
+    border-radius:26px;
+    padding:clamp(28px,4vw,48px) clamp(24px,4vw,40px);
+    text-align:center;
+    box-shadow:0 30px 80px rgba(0,0,0,.5), 0 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent);
+    transform:scale(.85) translateY(30px); opacity:0;
+    transition:transform .6s cubic-bezier(.2,.9,.25,1.2), opacity .5s ease;
+  }
+  .card.show{ transform:scale(1) translateY(0); opacity:1; }
+  .card .icon{ font-size:clamp(34px,4.5vw,52px); margin-bottom:10px; }
+  .card h2{
+    font-family:var(--title-font, 'Fredoka', sans-serif);
+    font-size:clamp(20px,2.6vw,32px); margin-bottom:16px;
+    color:color-mix(in srgb, var(--card-ink) 80%, var(--accent));
+  }
+  .card p.message{
+    font-size:clamp(16px,1.8vw,22px); line-height:1.5; font-weight:600;
+  }
+  .reveal-actions{
+    position:relative; z-index:6; position:absolute; bottom:clamp(20px,4vh,48px);
+    display:flex; gap:14px; align-items:center;
+  }
+  .btn-restart{
+    background:linear-gradient(120deg,var(--accent),var(--accent2));
+    color:#1c1424; font-weight:800; padding:12px 28px; border-radius:999px;
+    font-size:clamp(14px,1.4vw,18px);
+  }
+  .btn-mute{
+    background:var(--glass); border:1px solid var(--glass-strong);
+    width:46px; height:46px; border-radius:50%; font-size:18px;
+  }
+
+  /* ---- Admin ---- */
+  .admin-gear{
+    position:fixed; top:14px; right:14px; z-index:60;
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(255,255,255,.08); opacity:.3; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .3s;
+  }
+  .admin-gear:hover, .admin-gear:focus-visible{ opacity:1; }
+  .admin-overlay{
+    position:fixed; inset:0; z-index:70;
+    background:rgba(6,4,12,.78); backdrop-filter:blur(4px);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .admin-overlay.show{ display:flex; }
+  .admin-box{
+    width:min(640px,92vw); max-height:88vh; overflow-y:auto;
+    background:#1c1830; border-radius:22px; border:1px solid rgba(255,255,255,.12);
+    padding:clamp(22px,3vw,38px); position:relative; color:var(--ink);
+    font-family:'Nunito',sans-serif;
+  }
+  .admin-close{
+    position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:50%;
+    background:rgba(255,255,255,.08); font-size:16px;
+  }
+  .admin-box h3{ font-family:'Fredoka',sans-serif; font-size:clamp(19px,2.4vw,24px); margin-bottom:6px; }
+  .admin-box p.hint{ color:var(--ink-dim); font-size:13px; margin-bottom:16px; }
+  .admin-box input[type=password]{
+    width:100%; padding:12px 16px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06);
+    color:var(--ink); font-size:16px; margin-bottom:10px;
+  }
+  .admin-error{ color:#ff8a8a; font-size:13px; min-height:18px; margin-bottom:4px; }
+  .admin-btn{
+    background:linear-gradient(120deg,#c9a6e8,#f6d78b); color:#1c1424;
+    font-weight:800; padding:10px 22px; border-radius:999px; font-size:14px;
+  }
+  .admin-btn.secondary{ background:rgba(255,255,255,.09); color:var(--ink); font-weight:700; }
+  .admin-btn.danger{ background:rgba(255,90,95,.18); color:#ff9d9d; font-weight:700; }
+  .admin-field label{ display:block; font-weight:800; margin:18px 0 6px; font-size:14px; }
+  .admin-field textarea{
+    width:100%; min-height:120px; border-radius:14px;
+    border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
+    color:var(--ink); padding:12px; font-size:14px; font-family:'Nunito',sans-serif; resize:vertical;
+  }
+  #admin-msgs-princesa, #admin-msgs-heroe{ min-height:220px; }
+  .admin-quick-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .admin-quick-row input{
+    flex:1; padding:9px 14px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06);
+    color:var(--ink); font-size:13px; font-family:'Nunito',sans-serif;
+  }
+  .admin-quick-row button{
+    background:rgba(255,255,255,.1); color:var(--ink); font-weight:700;
+    padding:9px 16px; border-radius:999px; font-size:13px; white-space:nowrap;
+  }
+  .admin-count{ font-size:12px; color:var(--ink-dim); margin-top:4px; }
+  .admin-tracklist{ display:flex; flex-direction:column; gap:6px; margin:10px 0; max-height:150px; overflow-y:auto; }
+  .admin-track{
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(255,255,255,.05); padding:8px 12px; border-radius:10px; font-size:13px; gap:8px;
+  }
+  .admin-track span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .admin-track button{ color:#ff9d9d; font-size:12px; flex-shrink:0; }
+  .admin-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
+  .admin-save-msg{ font-size:13px; color:#9be89b; min-height:18px; margin-top:8px; }
+  .admin-file-label{
+    display:inline-block; background:rgba(255,255,255,.09); padding:9px 18px;
+    border-radius:999px; font-size:13px; font-weight:700; margin-top:6px;
+  }
+  .admin-file-label input{ display:none; }
+
+  /* ---- Confeti ---- */
+  .confetti-piece{
+    position:absolute; top:-12px; width:9px; height:13px; opacity:.95; z-index:8;
+    animation:confettiFall linear forwards; pointer-events:none;
+  }
+  @keyframes confettiFall{ to{ transform:translateY(112vh) rotate(560deg); opacity:.25; } }
+
+  /* ---- Auto-retorno ---- */
+  .auto-return{
+    position:absolute; top:clamp(16px,3vh,30px); left:50%; transform:translateX(-50%); z-index:7;
+    font-size:clamp(11px,1.1vw,13px); color:var(--ink-dim);
+    background:var(--glass); padding:6px 16px; border-radius:999px;
+    white-space:nowrap;
+  }
+
+  /* ---- Modo espera (pantalla de selección) ---- */
+  .attract-icon{
+    position:fixed; z-index:2; pointer-events:none;
+    font-size:clamp(20px,3vw,40px); opacity:.18;
+    animation:driftUp linear infinite;
+  }
+  @keyframes driftUp{ from{ transform:translateY(10vh) rotate(0deg);} to{ transform:translateY(-110vh) rotate(30deg);} }
+
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.2s !important; }
+  }
+  @media (max-width:640px){
+    .choices{ flex-direction:column; }
+    .cam-guide{ width:56vw; height:78vw; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="mirror-frame" aria-hidden="true"></div>
+  <div class="medallion tl" id="med-tl" aria-hidden="true">✨</div>
+  <div class="medallion tr" id="med-tr" aria-hidden="true">✨</div>
+  <div class="medallion bl" id="med-bl" aria-hidden="true">✨</div>
+  <div class="medallion br" id="med-br" aria-hidden="true">✨</div>
+  <div id="stars" aria-hidden="true"></div>
+
+  <!-- Screen 1: Selección -->
+  <section id="screen-select" class="screen active">
+    <div id="attract-holder" aria-hidden="true"></div>
+    <div class="wrap">
+      <h1>¿Quién se refleja hoy?</h1>
+      <p class="tag">Elige tu identidad y el espejo se preparará para ti</p>
+      <div class="choices">
+        <button class="theme-card princesa" id="btn-princesa">
+          <span class="emoji">👑</span>
+          <span class="label">Princesa</span>
+        </button>
+        <button class="theme-card heroe" id="btn-heroe">
+          <span class="emoji">🕷️</span>
+          <span class="label">Superhéroe</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screen 1.5: Nombre -->
+  <section id="screen-name" class="screen">
+    <button class="name-back" id="btn-name-back">← Volver</button>
+    <div class="wrap">
+      <span class="emoji-big" id="name-emoji">👑</span>
+      <h2 id="name-title">¿Cómo te llamas?</h2>
+      <p class="tag">El espejo hará tu mensaje aún más especial</p>
+      <input type="text" id="name-input" class="name-input" placeholder="Escribe tu nombre" maxlength="24" autocomplete="off">
+      <div class="name-actions">
+        <button class="btn-continue" id="btn-name-continue">Ver mi reflejo →</button>
+        <button class="btn-skip" id="btn-name-skip">Continuar sin nombre</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screen 2: Cámara -->
+  <section id="screen-camera" class="screen">
+    <button class="cam-back" id="btn-back">← Volver</button>
+    <video id="video" autoplay playsinline muted></video>
+    <div class="cam-vignette"></div>
+    <div class="cam-overlay">
+      <p class="cam-instruction" id="cam-instruction">Colócate en el centro del espejo</p>
+      <div class="cam-guide" aria-hidden="true"></div>
+      <div class="countdown" id="countdown" aria-live="polite"></div>
+    </div>
+    <div class="cam-error" id="cam-error">
+      <p class="cam-instruction">No pude abrir la cámara. Revisa los permisos del navegador.</p>
+      <button id="btn-retry">Intentar de nuevo</button>
+    </div>
+  </section>
+
+  <!-- Screen 3: Revelación -->
+  <section id="screen-reveal" class="screen">
+    <video id="video2" autoplay playsinline muted></video>
+    <div class="reveal-dim"></div>
+    <div id="confetti-holder" aria-hidden="true"></div>
+    <p class="auto-return" id="auto-return"></p>
+    <div class="card" id="card">
+      <div class="icon" id="card-icon">✨</div>
+      <h2 id="card-title">El espejo ha hablado</h2>
+      <p class="message" id="card-message" aria-live="polite"></p>
+    </div>
+    <div class="reveal-actions">
+      <button class="btn-restart" id="btn-restart">✨ Que elija otra persona</button>
+      <button class="btn-mute" id="btn-mute" title="Silenciar música">🔊</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Panel de administrador -->
+<button class="admin-gear" id="admin-gear" aria-label="Panel de administrador" title="Panel de administrador">⚙️</button>
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-box">
+    <button class="admin-close" id="admin-close" aria-label="Cerrar">✕</button>
+
+    <div id="admin-auth">
+      <h3>Panel de administrador</h3>
+      <p class="hint">Ingresa la contraseña para cargar mensajes y música.</p>
+      <input type="password" id="admin-password" placeholder="Contraseña" autocomplete="off">
+      <p class="admin-error" id="admin-auth-error"></p>
+      <button class="admin-btn" id="admin-login">Entrar</button>
+    </div>
+
+    <div id="admin-panel" style="display:none;">
+      <h3>Panel de administrador</h3>
+      <p class="hint">Los cambios se guardan en este navegador y se usan de inmediato.</p>
+
+      <div class="admin-field">
+        <label>Mensajes para Princesa</label>
+        <div class="admin-quick-row">
+          <input type="text" id="admin-quick-princesa" placeholder="Escribe una frase y presiona Agregar">
+          <button id="admin-quick-princesa-btn">+ Agregar</button>
+        </div>
+        <textarea id="admin-msgs-princesa" placeholder="Una frase por línea. Puedes pegar muchas de una sola vez."></textarea>
+        <p class="admin-count" id="count-princesa"></p>
+      </div>
+      <div class="admin-field">
+        <label>Mensajes para Superhéroe</label>
+        <div class="admin-quick-row">
+          <input type="text" id="admin-quick-heroe" placeholder="Escribe una frase y presiona Agregar">
+          <button id="admin-quick-heroe-btn">+ Agregar</button>
+        </div>
+        <textarea id="admin-msgs-heroe" placeholder="Una frase por línea. Puedes pegar muchas de una sola vez."></textarea>
+        <p class="admin-count" id="count-heroe"></p>
+      </div>
+      <div class="admin-field">
+        <label>Frases generales (se pueden usar tanto para princesas como para superhéroes)</label>
+        <div class="admin-quick-row">
+          <input type="text" id="admin-quick-general" placeholder="Escribe una frase y presiona Agregar">
+          <button id="admin-quick-general-btn">+ Agregar</button>
+        </div>
+        <textarea id="admin-msgs-general" placeholder="Una frase por línea. Puedes pegar muchas de una sola vez."></textarea>
+        <p class="admin-count" id="count-general"></p>
+      </div>
+
+      <div class="admin-field">
+        <label>Música de fondo (compartida para princesas y superhéroes)</label>
+        <p class="hint" style="margin-bottom:8px;">Si no cargas ninguna canción, el espejo usa música ambiental generada automáticamente.</p>
+        <label class="admin-file-label">
+          + Agregar canciones
+          <input type="file" id="admin-music-input" accept="audio/*" multiple>
+        </label>
+        <div class="admin-tracklist" id="admin-tracklist"></div>
+        <button class="admin-btn danger" id="admin-music-clear" style="margin-top:6px;">Quitar toda la música</button>
+      </div>
+
+      <div class="admin-actions">
+        <button class="admin-btn" id="admin-save">Guardar cambios</button>
+        <button class="admin-btn secondary" id="admin-restore">Restaurar mensajes originales</button>
+      </div>
+      <p class="admin-save-msg" id="admin-save-msg"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ADMIN_PASSWORD = "actividad1234";
+
+  /* ---------------- Mensajes por defecto (edítalos aquí libremente) ---------------- */
+  const DEFAULT_MESSAGES = {
+    princesa: [
+      "El espejo ve lo que muchos olvidan: tu valentía no necesita corona para brillar.",
+      "Eres bondadosa, eres fuerte, eres tú… y eso ya es un reino entero.",
+      "Aquí dentro vive alguien capaz de liderar con el corazón, no solo con la voz.",
+      "Tu bondad es la joya más brillante de todo el castillo.",
+      "Nadie más tiene tu sonrisa, tu magia es única en todo el reino.",
+      "Hoy el espejo confirma: eres más valiente de lo que imaginas.",
+      "Una verdadera princesa cuida a los demás, y tú lo haces todos los días.",
+      "Tu imaginación puede construir reinos enteros; nunca dejes de soñar.",
+      "El espejo susurra un secreto: tu fuerza está en ser amable incluso cuando es difícil.",
+      "Eres la protagonista de tu propia historia, escríbela con valentía.",
+      "Tu risa tiene el poder de iluminar cualquier salón del castillo.",
+      "No necesitas que nadie te rescate: tú también sabes rescatar a otros."
+    ],
+    heroe: [
+      "El espejo ha detectado un superpoder: tu manera de cuidar a quienes quieres.",
+      "Los héroes de verdad no siempre llevan capa, a veces solo tienen un buen corazón.",
+      "Tu valentía activa un campo de fuerza invisible que protege a los demás.",
+      "Hoy el espejo confirma: tienes el poder de hacer sonreír a alguien más.",
+      "Cada vez que ayudas a un amigo, tu superpoder se hace más fuerte.",
+      "No existe villano que resista la fuerza de tu bondad.",
+      "El espejo revela tu identidad secreta: eres alguien en quien se puede confiar.",
+      "Tu curiosidad es un superpoder que puede salvar al mundo algún día.",
+      "Ser valiente no es no tener miedo, es actuar bien aunque lo tengas. Y tú lo logras.",
+      "El verdadero superpoder es la amabilidad, y tú lo usas todos los días.",
+      "El espejo detecta una fuerza extraordinaria: tu determinación para intentarlo de nuevo.",
+      "Este mundo necesita más héroes como tú, con corazón grande y manos dispuestas a ayudar."
+    ],
+    general: [
+      "El espejo no miente: hoy hay algo especial reflejado en ti.",
+      "De todos los que se han parado aquí, tú tienes tu propia magia.",
+      "El espejo guardará este momento como uno de sus favoritos."
+    ]
+  };
+
+  function cloneDefaults(){
+    return {
+      princesa: DEFAULT_MESSAGES.princesa.slice(),
+      heroe: DEFAULT_MESSAGES.heroe.slice(),
+      general: DEFAULT_MESSAGES.general.slice()
+    };
+  }
+  const MESSAGES = cloneDefaults();
+  (function loadStoredMessages(){
+    try{
+      const raw = localStorage.getItem('espejo_mensajes');
+      if(raw){
+        const saved = JSON.parse(raw);
+        if(Array.isArray(saved.princesa) && saved.princesa.length) MESSAGES.princesa = saved.princesa;
+        if(Array.isArray(saved.heroe) && saved.heroe.length) MESSAGES.heroe = saved.heroe;
+        if(Array.isArray(saved.general)) MESSAGES.general = saved.general;
+      }
+    }catch(e){ /* si algo falla, se quedan los mensajes por defecto */ }
+  })();
+
+  const THEME_META = {
+    princesa: { icon:"👑", cornerEmoji:"✨", title:"¡{name}, el espejo te ha reconocido!", cardTitleNoName:"El espejo te ha reconocido", instruction:"{name}, colócate en el centro del espejo", instructionNoName:"Colócate en el centro del espejo, princesa" },
+    heroe: { icon:"🕷️", cornerEmoji:"⭐", title:"¡{name}, el espejo ha confirmado tu identidad!", cardTitleNoName:"El espejo ha confirmado tu identidad", instruction:"{name}, colócate en el centro del espejo", instructionNoName:"Colócate en el centro del espejo, héroe" }
+  };
+
+  /* ---------------- Referencias DOM ---------------- */
+  const body = document.body;
+  const screens = {
+    select: document.getElementById('screen-select'),
+    name: document.getElementById('screen-name'),
+    camera: document.getElementById('screen-camera'),
+    reveal: document.getElementById('screen-reveal')
+  };
+  const video = document.getElementById('video');
+  const video2 = document.getElementById('video2');
+  const camInstruction = document.getElementById('cam-instruction');
+  const countdownEl = document.getElementById('countdown');
+  const camError = document.getElementById('cam-error');
+  const card = document.getElementById('card');
+  const cardIcon = document.getElementById('card-icon');
+  const cardTitle = document.getElementById('card-title');
+  const cardMessage = document.getElementById('card-message');
+  const medallions = ['med-tl','med-tr','med-bl','med-br'].map(id=>document.getElementById(id));
+  const btnMute = document.getElementById('btn-mute');
+  const nameEmoji = document.getElementById('name-emoji');
+  const nameTitle = document.getElementById('name-title');
+  const nameInput = document.getElementById('name-input');
+  const confettiHolder = document.getElementById('confetti-holder');
+  const autoReturnEl = document.getElementById('auto-return');
+
+  let currentTheme = null;
+  let currentName = '';
+  let stream = null;
+  let countdownTimers = [];
+  let lastMessageIndex = -1;
+  let muted = false;
+  let autoReturnTimer = null;
+  let autoReturnTick = null;
+
+  /* ---------------- Estrellas decorativas ---------------- */
+  (function makeStars(){
+    const holder = document.getElementById('stars');
+    for(let i=0;i<16;i++){
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = 2 + Math.random()*3;
+      s.style.width = size+'px';
+      s.style.height = size+'px';
+      s.style.left = (Math.random()*96+2)+'vw';
+      s.style.top = (Math.random()*96+2)+'vh';
+      s.style.animationDelay = (Math.random()*3)+'s';
+      holder.appendChild(s);
+    }
+  })();
+
+  /* ---------------- Modo espera: íconos flotando en la selección ---------------- */
+  (function makeAttractIcons(){
+    const holder = document.getElementById('attract-holder');
+    const icons = ['👑','⚡','✨','🕷️','⭐','💫'];
+    for(let i=0;i<10;i++){
+      const el = document.createElement('span');
+      el.className = 'attract-icon';
+      el.textContent = icons[Math.floor(Math.random()*icons.length)];
+      el.style.left = (Math.random()*94+2)+'vw';
+      el.style.animationDuration = (14+Math.random()*10)+'s';
+      el.style.animationDelay = (Math.random()*12)+'s';
+      holder.appendChild(el);
+    }
+  })();
+
+  /* ---------------- Confeti al revelar el mensaje ---------------- */
+  function launchConfetti(){
+    const colors = ['#e8b4c8','#c9a6e8','#f6d78b','#ff5a5f','#2e6ff2','#ffd23f'];
+    confettiHolder.innerHTML = '';
+    for(let i=0;i<38;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      p.style.left = (Math.random()*100)+'%';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.borderRadius = Math.random()>0.5 ? '50%' : '2px';
+      p.style.animationDuration = (2.4+Math.random()*1.8)+'s';
+      p.style.animationDelay = (Math.random()*0.5)+'s';
+      confettiHolder.appendChild(p);
+    }
+    setTimeout(()=>{ confettiHolder.innerHTML = ''; }, 4600);
+  }
+
+  /* ---------------- Campanita mágica al revelar ---------------- */
+  function playChime(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = window.__chimeCtx || (window.__chimeCtx = new AC());
+      if(ctx.state === 'suspended') ctx.resume();
+      const notes = currentTheme === 'princesa' ? [880,1108.73,1318.51,1760] : [659.25,783.99,987.77,1318.51];
+      notes.forEach((f,i)=>{
+        const t = ctx.currentTime + i*0.11;
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.16, t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.9);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t); osc.stop(t+1);
+      });
+    }catch(e){ /* si el navegador bloquea audio, seguimos sin sonido */ }
+  }
+
+  /* ---------------- Almacenamiento de música subida (IndexedDB) ---------------- */
+  const MusicStore = (function(){
+    const DB_NAME = 'espejoMagicoDB', STORE = 'tracks';
+    let dbPromise = null;
+    function open(){
+      if(dbPromise) return dbPromise;
+      dbPromise = new Promise((resolve,reject)=>{
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = ()=>{
+          req.result.createObjectStore(STORE, { keyPath:'id', autoIncrement:true });
+        };
+        req.onsuccess = ()=>resolve(req.result);
+        req.onerror = ()=>reject(req.error);
+      });
+      return dbPromise;
+    }
+    return {
+      async addFile(file){
+        const db = await open();
+        return new Promise((resolve,reject)=>{
+          const tx = db.transaction(STORE,'readwrite');
+          const req = tx.objectStore(STORE).add({ name:file.name, blob:file });
+          req.onsuccess = ()=>resolve(req.result);
+          req.onerror = ()=>reject(req.error);
+        });
+      },
+      async getAll(){
+        const db = await open();
+        return new Promise((resolve,reject)=>{
+          const tx = db.transaction(STORE,'readonly');
+          const req = tx.objectStore(STORE).getAll();
+          req.onsuccess = ()=>resolve(req.result || []);
+          req.onerror = ()=>reject(req.error);
+        });
+      },
+      async remove(id){
+        const db = await open();
+        return new Promise((resolve,reject)=>{
+          const tx = db.transaction(STORE,'readwrite');
+          const req = tx.objectStore(STORE).delete(id);
+          req.onsuccess = ()=>resolve();
+          req.onerror = ()=>reject(req.error);
+        });
+      },
+      async clear(){
+        const db = await open();
+        return new Promise((resolve,reject)=>{
+          const tx = db.transaction(STORE,'readwrite');
+          const req = tx.objectStore(STORE).clear();
+          req.onsuccess = ()=>resolve();
+          req.onerror = ()=>reject(req.error);
+        });
+      }
+    };
+  })();
+
+  let uploadedTracks = []; // [{id, name, url}]
+
+  async function refreshUploadedTracks(){
+    try{
+      const rows = await MusicStore.getAll();
+      uploadedTracks = rows.map(r=>({ id:r.id, name:r.name, url:URL.createObjectURL(r.blob) }));
+      TrackPlayer.setList(uploadedTracks.map(t=>t.url));
+      renderTrackList();
+    }catch(e){ /* IndexedDB no disponible, se usará música ambiental */ }
+  }
+
+  function renderTrackList(){
+    const holder = document.getElementById('admin-tracklist');
+    if(!holder) return;
+    holder.innerHTML = '';
+    if(uploadedTracks.length === 0){
+      holder.innerHTML = '<p class="hint" style="margin:0;">No hay canciones cargadas. Se usará música ambiental automática.</p>';
+      return;
+    }
+    uploadedTracks.forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'admin-track';
+      const span = document.createElement('span');
+      span.textContent = '🎵 ' + t.name;
+      const btn = document.createElement('button');
+      btn.textContent = 'Quitar';
+      btn.addEventListener('click', async ()=>{
+        await MusicStore.remove(t.id);
+        await refreshUploadedTracks();
+      });
+      row.appendChild(span); row.appendChild(btn);
+      holder.appendChild(row);
+    });
+  }
+
+  /* ---------------- Reproductor de canciones subidas ---------------- */
+  const TrackPlayer = (function(){
+    const audioEl = new Audio();
+    audioEl.preload = 'auto';
+    let list = [];
+    let idx = -1;
+    let active = false;
+    audioEl.addEventListener('ended', ()=>{ if(active) playNext(); });
+    function playNext(){
+      if(list.length === 0) return;
+      let i = Math.floor(Math.random()*list.length);
+      if(list.length > 1){ while(i === idx){ i = Math.floor(Math.random()*list.length); } }
+      idx = i;
+      audioEl.src = list[idx];
+      audioEl.volume = muted ? 0 : 0.55;
+      audioEl.currentTime = 0;
+      audioEl.play().catch(()=>{});
+    }
+    return {
+      setList(newList){ list = newList; },
+      hasTracks(){ return list.length > 0; },
+      start(){
+        if(list.length === 0) return;
+        active = true;
+        playNext();
+      },
+      stop(){
+        active = false;
+        audioEl.pause();
+      },
+      setMuted(m){ audioEl.volume = m ? 0 : 0.55; }
+    };
+  })();
+
+  /* ---------------- Motor de música ambiental ---------------- */
+  const Music = (function(){
+    let ctx=null, master=null, padNodes=[], noteTimer=null, running=false;
+    const scales = {
+      princesa: [523.25,587.33,659.25,783.99,880.00,987.77],
+      heroe: [196.00,220.00,246.94,293.66,329.63,392.00]
+    };
+    function ensureCtx(){
+      if(!ctx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0;
+        master.connect(ctx.destination);
+      }
+    }
+    function buildPad(theme){
+      const freqs = theme==='princesa' ? [261.63,329.63,392.00] : [130.81,164.81,196.00];
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = theme==='princesa' ? 2200 : 1200;
+      filter.connect(master);
+      freqs.forEach((f,i)=>{
+        const osc = ctx.createOscillator();
+        osc.type = theme==='princesa' ? 'sine' : 'triangle';
+        osc.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.value = 0.05;
+        osc.connect(g); g.connect(filter);
+        osc.start();
+        padNodes.push(osc);
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 0.08 + i*0.02;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 0.02;
+        lfo.connect(lfoGain); lfoGain.connect(g.gain);
+        lfo.start();
+        padNodes.push(lfo);
+      });
+    }
+    function scheduleNotes(theme){
+      const scale = scales[theme];
+      function playNote(){
+        if(!running) return;
+        const f = scale[Math.floor(Math.random()*scale.length)];
+        const t = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        const g = ctx.createGain();
+        const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.12, t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, t+1.6);
+        if(pan){ pan.pan.value = (Math.random()*1.6-0.8); osc.connect(g); g.connect(pan); pan.connect(master); }
+        else { osc.connect(g); g.connect(master); }
+        osc.start(t); osc.stop(t+1.7);
+        noteTimer = setTimeout(playNote, 1800+Math.random()*2200);
+      }
+      playNote();
+    }
+    function stopPad(){
+      padNodes.forEach(n=>{ try{ n.stop(); }catch(e){} });
+      padNodes = [];
+      clearTimeout(noteTimer);
+    }
+    return {
+      start(theme){
+        ensureCtx();
+        if(ctx.state === 'suspended') ctx.resume();
+        stopPad();
+        running = true;
+        const now = ctx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(muted ? 0 : 0.18, now+1.5);
+        buildPad(theme);
+        scheduleNotes(theme);
+      },
+      stop(){
+        running = false;
+        if(!ctx) return;
+        const now = ctx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(0, now+1);
+        setTimeout(stopPad, 1100);
+      },
+      setMuted(m){
+        muted = m;
+        if(!ctx) return;
+        const now = ctx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(m ? 0 : 0.18, now+0.3);
+      }
+    };
+  })();
+
+  const BackgroundAudio = {
+    start(theme){
+      if(TrackPlayer.hasTracks()) TrackPlayer.start();
+      else Music.start(theme);
+    },
+    stop(){
+      TrackPlayer.stop();
+      Music.stop();
+    },
+    setMuted(m){
+      TrackPlayer.setMuted(m);
+      Music.setMuted(m);
+    }
+  };
+
+  /* ---------------- Navegación entre pantallas ---------------- */
+  function showScreen(name){
+    Object.values(screens).forEach(s=>s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  function setTheme(theme){
+    currentTheme = theme;
+    body.classList.remove('theme-princesa','theme-heroe');
+    body.classList.add(theme === 'princesa' ? 'theme-princesa' : 'theme-heroe');
+    const meta = THEME_META[theme];
+    medallions.forEach(m => m.textContent = meta.cornerEmoji);
+    cardIcon.textContent = meta.icon;
+    nameEmoji.textContent = meta.icon;
+    nameTitle.textContent = theme === 'princesa' ? '¿Cómo te llamas, princesa?' : '¿Cómo te llamas, héroe?';
+  }
+
+  function applyNameToScreens(){
+    const meta = THEME_META[currentTheme];
+    const name = currentName.trim();
+    camInstruction.textContent = name ? meta.instruction.replace('{name}', name) : meta.instructionNoName;
+    cardTitle.textContent = name ? meta.title.replace('{name}', name) : meta.cardTitleNoName;
+  }
+
+  /* ---------------- Cámara ---------------- */
+  async function startCamera(){
+    camError.classList.remove('show');
+    countdownEl.textContent = '';
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:'user',
+          width:{ ideal:1280 },
+          height:{ ideal:960 },
+          aspectRatio:{ ideal:4/3 }
+        },
+        audio:false
+      });
+      // Si la cámara soporta zoom por hardware/software, lo llevamos al mínimo
+      // para que la persona se vea completa y no recortada.
+      const track = stream.getVideoTracks()[0];
+      if(track && track.getCapabilities){
+        const caps = track.getCapabilities();
+        if(caps.zoom && typeof caps.zoom.min === 'number'){
+          try{ await track.applyConstraints({ advanced:[{ zoom: caps.zoom.min }] }); }catch(e){}
+        }
+      }
+      video.srcObject = stream;
+      video2.srcObject = stream;
+      await video.play().catch(()=>{});
+      video2.play().catch(()=>{});
+      runCountdown();
+    }catch(err){
+      camError.classList.add('show');
+    }
+  }
+
+  function stopCamera(){
+    if(stream){
+      stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+    video2.srcObject = null;
+  }
+
+  function clearCountdown(){
+    countdownTimers.forEach(t=>clearTimeout(t));
+    countdownTimers = [];
+  }
+
+  function runCountdown(){
+    clearCountdown();
+    const steps = ['3','2','1','¡Ya!'];
+    steps.forEach((label, i)=>{
+      countdownTimers.push(setTimeout(()=>{
+        countdownEl.textContent = label;
+      }, i*900));
+    });
+    countdownTimers.push(setTimeout(()=>{
+      revealCard();
+    }, steps.length*900 + 250));
+  }
+
+  /* ---------------- Revelación ---------------- */
+  function pickMessage(theme){
+    const list = MESSAGES[theme].concat(MESSAGES.general || []);
+    let idx = Math.floor(Math.random()*list.length);
+    if(list.length > 1){
+      while(idx === lastMessageIndex){ idx = Math.floor(Math.random()*list.length); }
+    }
+    lastMessageIndex = idx;
+    return list[idx];
+  }
+
+  function revealCard(){
+    applyNameToScreens();
+    cardMessage.textContent = pickMessage(currentTheme);
+    showScreen('reveal');
+    card.classList.remove('show');
+    requestAnimationFrame(()=>{
+      setTimeout(()=> card.classList.add('show'), 60);
+    });
+    BackgroundAudio.start(currentTheme);
+    launchConfetti();
+    playChime();
+    startAutoReturn();
+  }
+
+  function startAutoReturn(){
+    clearAutoReturn();
+    let secondsLeft = 30;
+    autoReturnEl.textContent = 'Volviendo al inicio en ' + secondsLeft + 's';
+    autoReturnTick = setInterval(()=>{
+      secondsLeft -= 1;
+      if(secondsLeft <= 0){ clearAutoReturn(); goToSelect(); return; }
+      autoReturnEl.textContent = 'Volviendo al inicio en ' + secondsLeft + 's';
+    }, 1000);
+  }
+
+  function clearAutoReturn(){
+    if(autoReturnTick){ clearInterval(autoReturnTick); autoReturnTick = null; }
+    autoReturnEl.textContent = '';
+  }
+
+  function goToSelect(){
+    clearCountdown();
+    clearAutoReturn();
+    BackgroundAudio.stop();
+    stopCamera();
+    card.classList.remove('show');
+    currentName = '';
+    nameInput.value = '';
+    showScreen('select');
+  }
+
+  /* ---------------- Eventos: selección y nombre ---------------- */
+  document.getElementById('btn-princesa').addEventListener('click', ()=>{
+    setTheme('princesa');
+    showScreen('name');
+    setTimeout(()=> nameInput.focus(), 300);
+  });
+  document.getElementById('btn-heroe').addEventListener('click', ()=>{
+    setTheme('heroe');
+    showScreen('name');
+    setTimeout(()=> nameInput.focus(), 300);
+  });
+  document.getElementById('btn-name-back').addEventListener('click', ()=>{
+    nameInput.value = '';
+    showScreen('select');
+  });
+  function confirmName(){
+    currentName = nameInput.value.trim().slice(0,24);
+    applyNameToScreens();
+    showScreen('camera');
+    startCamera();
+  }
+  document.getElementById('btn-name-continue').addEventListener('click', confirmName);
+  document.getElementById('btn-name-skip').addEventListener('click', ()=>{
+    nameInput.value = '';
+    confirmName();
+  });
+  nameInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') confirmName();
+  });
+
+  /* ---------------- Eventos: cámara y revelación ---------------- */
+  document.getElementById('btn-back').addEventListener('click', goToSelect);
+  document.getElementById('btn-retry').addEventListener('click', startCamera);
+  document.getElementById('btn-restart').addEventListener('click', goToSelect);
+  card.addEventListener('click', clearAutoReturn);
+  btnMute.addEventListener('click', ()=>{
+    muted = !muted;
+    BackgroundAudio.setMuted(muted);
+    btnMute.textContent = muted ? '🔇' : '🔊';
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && screens.camera.classList.contains('active')){
+      goToSelect();
+    }
+  });
+
+  /* ---------------- Eventos: panel de administrador ---------------- */
+  const adminOverlay = document.getElementById('admin-overlay');
+  const adminAuth = document.getElementById('admin-auth');
+  const adminPanel = document.getElementById('admin-panel');
+  const adminPassword = document.getElementById('admin-password');
+  const adminAuthError = document.getElementById('admin-auth-error');
+  const adminMsgsPrincesa = document.getElementById('admin-msgs-princesa');
+  const adminMsgsHeroe = document.getElementById('admin-msgs-heroe');
+  const adminMsgsGeneral = document.getElementById('admin-msgs-general');
+  const adminSaveMsg = document.getElementById('admin-save-msg');
+
+  function openAdmin(){
+    adminOverlay.classList.add('show');
+    adminAuth.style.display = '';
+    adminPanel.style.display = 'none';
+    adminPassword.value = '';
+    adminAuthError.textContent = '';
+    setTimeout(()=> adminPassword.focus(), 100);
+  }
+  function closeAdmin(){
+    adminOverlay.classList.remove('show');
+  }
+  function fillAdminFields(){
+    adminMsgsPrincesa.value = MESSAGES.princesa.join('\n');
+    adminMsgsHeroe.value = MESSAGES.heroe.join('\n');
+    adminMsgsGeneral.value = (MESSAGES.general || []).join('\n');
+    renderTrackList();
+    updateCounts();
+  }
+
+  function countLines(str){
+    return str.split('\n').map(s=>s.trim()).filter(Boolean).length;
+  }
+  function updateCounts(){
+    document.getElementById('count-princesa').textContent = countLines(adminMsgsPrincesa.value) + ' frase(s)';
+    document.getElementById('count-heroe').textContent = countLines(adminMsgsHeroe.value) + ' frase(s)';
+    document.getElementById('count-general').textContent = countLines(adminMsgsGeneral.value) + ' frase(s)';
+  }
+  [adminMsgsPrincesa, adminMsgsHeroe, adminMsgsGeneral].forEach(ta=>{
+    ta.addEventListener('input', updateCounts);
+  });
+
+  function wireQuickAdd(inputId, btnId, textarea){
+    const input = document.getElementById(inputId);
+    const btn = document.getElementById(btnId);
+    function addPhrase(){
+      const val = input.value.trim();
+      if(!val) return;
+      textarea.value = textarea.value.trim().length ? (textarea.value.replace(/\n+$/,'') + '\n' + val) : val;
+      input.value = '';
+      input.focus();
+      updateCounts();
+    }
+    btn.addEventListener('click', addPhrase);
+    input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); addPhrase(); } });
+  }
+  wireQuickAdd('admin-quick-princesa','admin-quick-princesa-btn', adminMsgsPrincesa);
+  wireQuickAdd('admin-quick-heroe','admin-quick-heroe-btn', adminMsgsHeroe);
+  wireQuickAdd('admin-quick-general','admin-quick-general-btn', adminMsgsGeneral);
+
+  document.getElementById('admin-gear').addEventListener('click', openAdmin);
+  document.getElementById('admin-close').addEventListener('click', closeAdmin);
+  adminOverlay.addEventListener('click', (e)=>{ if(e.target === adminOverlay) closeAdmin(); });
+
+  document.getElementById('admin-login').addEventListener('click', doAdminLogin);
+  adminPassword.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doAdminLogin(); });
+  function doAdminLogin(){
+    if(adminPassword.value === ADMIN_PASSWORD){
+      adminAuth.style.display = 'none';
+      adminPanel.style.display = '';
+      fillAdminFields();
+    }else{
+      adminAuthError.textContent = 'Contraseña incorrecta, intenta de nuevo.';
+    }
+  }
+
+  document.getElementById('admin-save').addEventListener('click', ()=>{
+    const p = adminMsgsPrincesa.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const h = adminMsgsHeroe.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const g = adminMsgsGeneral.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(p.length === 0 || h.length === 0){
+      adminSaveMsg.style.color = '#ff9d9d';
+      adminSaveMsg.textContent = 'Cada tema necesita al menos un mensaje.';
+      return;
+    }
+    MESSAGES.princesa = p;
+    MESSAGES.heroe = h;
+    MESSAGES.general = g;
+    localStorage.setItem('espejo_mensajes', JSON.stringify({ princesa:p, heroe:h, general:g }));
+    adminSaveMsg.style.color = '#9be89b';
+    adminSaveMsg.textContent = 'Cambios guardados ✓';
+    setTimeout(()=>{ adminSaveMsg.textContent = ''; }, 2500);
+  });
+
+  document.getElementById('admin-restore').addEventListener('click', ()=>{
+    const d = cloneDefaults();
+    MESSAGES.princesa = d.princesa;
+    MESSAGES.heroe = d.heroe;
+    MESSAGES.general = d.general;
+    localStorage.removeItem('espejo_mensajes');
+    fillAdminFields();
+    adminSaveMsg.style.color = '#9be89b';
+    adminSaveMsg.textContent = 'Mensajes originales restaurados ✓';
+    setTimeout(()=>{ adminSaveMsg.textContent = ''; }, 2500);
+  });
+
+  document.getElementById('admin-music-input').addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files || []);
+    for(const f of files){ await MusicStore.addFile(f); }
+    e.target.value = '';
+    await refreshUploadedTracks();
+  });
+  document.getElementById('admin-music-clear').addEventListener('click', async ()=>{
+    await MusicStore.clear();
+    await refreshUploadedTracks();
+  });
+
+  refreshUploadedTracks();
+
+})();
+</script>
+</body>
+</html>
