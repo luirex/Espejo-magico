@@ -274,7 +274,7 @@
 
   /* ---- Admin ---- */
   .admin-gear{
-    position:fixed; bottom:14px; right:14px; z-index:60;
+    position:fixed; top:14px; right:14px; z-index:60;
     width:38px; height:38px; border-radius:50%;
     background:rgba(255,255,255,.08); opacity:.3; font-size:16px;
     display:flex; align-items:center; justify-content:center;
@@ -387,7 +387,7 @@
           <span class="label">Princesa</span>
         </button>
         <button class="theme-card heroe" id="btn-heroe">
-          <span class="emoji">🦸‍♀️</span>
+          <span class="emoji">🕷️</span>
           <span class="label">Superhéroe</span>
         </button>
       </div>
@@ -560,7 +560,7 @@
 
   const THEME_META = {
     princesa: { icon:"👑", cornerEmoji:"✨", title:"¡{name}, el espejo te ha reconocido!", cardTitleNoName:"El espejo te ha reconocido", instruction:"{name}, colócate en el centro del espejo", instructionNoName:"Colócate en el centro del espejo, princesa" },
-    heroe: { icon:"⚡", cornerEmoji:"⭐", title:"¡{name}, el espejo ha confirmado tu identidad!", cardTitleNoName:"El espejo ha confirmado tu identidad", instruction:"{name}, colócate en el centro del espejo", instructionNoName:"Colócate en el centro del espejo, héroe" }
+    heroe: { icon:"🕷️", cornerEmoji:"⭐", title:"¡{name}, el espejo ha confirmado tu identidad!", cardTitleNoName:"El espejo ha confirmado tu identidad", instruction:"{name}, colócate en el centro del espejo", instructionNoName:"Colócate en el centro del espejo, héroe" }
   };
 
   /* ---------------- Referencias DOM ---------------- */
@@ -616,7 +616,7 @@
   /* ---------------- Modo espera: íconos flotando en la selección ---------------- */
   (function makeAttractIcons(){
     const holder = document.getElementById('attract-holder');
-    const icons = ['👑','⚡','✨','🦸‍♀️','⭐','💫'];
+    const icons = ['👑','⚡','✨','🕷️','⭐','💫'];
     for(let i=0;i<10;i++){
       const el = document.createElement('span');
       el.className = 'attract-icon';
@@ -935,7 +935,24 @@
     camError.classList.remove('show');
     countdownEl.textContent = '';
     try{
-      stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:'user',
+          width:{ ideal:1280 },
+          height:{ ideal:960 },
+          aspectRatio:{ ideal:4/3 }
+        },
+        audio:false
+      });
+      // Si la cámara soporta zoom por hardware/software, lo llevamos al mínimo
+      // para que la persona se vea completa y no recortada.
+      const track = stream.getVideoTracks()[0];
+      if(track && track.getCapabilities){
+        const caps = track.getCapabilities();
+        if(caps.zoom && typeof caps.zoom.min === 'number'){
+          try{ await track.applyConstraints({ advanced:[{ zoom: caps.zoom.min }] }); }catch(e){}
+        }
+      }
       video.srcObject = stream;
       video2.srcObject = stream;
       await video.play().catch(()=>{});
