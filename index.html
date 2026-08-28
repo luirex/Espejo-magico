@@ -191,6 +191,15 @@
     background:#000;
   }
   .pr-photo-box img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pr-photo-box.cutout{
+    background:
+      linear-gradient(45deg, #2a2438 25%, transparent 25%) 0 0/24px 24px,
+      linear-gradient(-45deg, #2a2438 25%, transparent 25%) 0 0/24px 24px,
+      linear-gradient(45deg, transparent 75%, #2a2438 75%) 0 0/24px 24px,
+      linear-gradient(-45deg, transparent 75%, #2a2438 75%) 0 0/24px 24px,
+      #1c1830;
+  }
+  .pr-photo-box.cutout img{ object-fit:contain; }
   .pr-actions{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
   .btn-retake{
     background:var(--glass); border:1px solid var(--glass-strong); color:var(--ink);
@@ -198,6 +207,13 @@
     font-size:clamp(14px,1.4vw,18px);
   }
   .btn-retake:hover{ background:var(--glass-strong); }
+  .btn-removebg{
+    background:linear-gradient(120deg, var(--accent2), var(--accent));
+    color:#1c1424; font-weight:800; padding:12px 26px; border-radius:999px;
+    font-size:clamp(14px,1.4vw,18px);
+  }
+  .btn-removebg:disabled{ opacity:.55; cursor:wait; }
+  .pr-bg-hint{ color:var(--ink-dim); font-size:clamp(12px,1.2vw,15px); text-align:center; min-height:1.2em; }
 
   /* ---- Camera screen ---- */
   #screen-camera{ overflow:hidden; }
@@ -463,6 +479,15 @@
     max-width:100%; max-height:100%; width:auto; height:auto;
     object-fit:contain; border-radius:4px; display:block;
   }
+  /* Foto "sin fondo": la imagen ocupa todo el recuadro, sin caja blanca,
+     para que se adapte directamente al hueco en blanco del marco */
+  .print-card .pc-photo.transparent .pc-photo-frame{
+    background:transparent; padding:0; border-radius:0; box-shadow:none;
+  }
+  .print-card .pc-photo.transparent .pc-photo-frame img{
+    width:100%; height:100%; max-width:100%; max-height:100%;
+    object-fit:contain; border-radius:0;
+  }
   .print-actions{ margin-top:20px; display:flex; gap:12px; }
   .admin-frame-row.is-active{ box-shadow:0 0 0 2px var(--accent3) inset; }
   .admin-frame-name{ font-weight:800; }
@@ -497,6 +522,15 @@
   }
   .frame-editor-toggles{
     display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; font-size:12px; color:var(--ink-dim);
+  }
+  .frame-editor-colors{
+    display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; font-size:12px; color:var(--ink-dim);
+    align-items:center;
+  }
+  .frame-editor-colors label{ display:flex; align-items:center; gap:6px; }
+  .frame-editor-colors input[type="color"]{
+    width:28px; height:24px; padding:0; border:2px solid var(--glass-strong);
+    border-radius:6px; background:none; cursor:pointer;
   }
   .frame-editor-toggles label{ display:flex; align-items:center; gap:6px; }
   .frame-editor-toggles input{ width:15px; height:15px; }
@@ -587,8 +621,10 @@
       <div class="pr-photo-box"><img id="photo-review-img" alt="Tu foto"></div>
       <div class="pr-actions">
         <button class="btn-retake" id="btn-retake">📸 Tomar otra</button>
+        <button class="btn-removebg" id="btn-removebg">🧼 Quitar fondo</button>
         <button class="btn-continue" id="btn-use-photo">✅ Usar esta foto</button>
       </div>
+      <p class="pr-bg-hint" id="pr-bg-status"></p>
     </div>
   </section>
 
@@ -716,6 +752,15 @@
             <label><input type="checkbox" id="fe-visible-message" checked> Mostrar mensaje</label>
             <label><input type="checkbox" id="fe-visible-photo" checked> Mostrar foto</label>
           </div>
+          <p class="hint" style="margin:10px 0 0;">Color del texto de cada recuadro:</p>
+          <div class="frame-editor-colors">
+            <label>Título <input type="color" id="fe-color-title" value="#221c1c"></label>
+            <label>Nombre <input type="color" id="fe-color-name" value="#a5763f"></label>
+            <label>Mensaje <input type="color" id="fe-color-message" value="#221c1c"></label>
+          </div>
+          <label class="admin-count" style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer;">
+            <input type="checkbox" id="fe-photo-transparent"> La foto no lleva caja blanca (se adapta directo al hueco del marco)
+          </label>
           <p class="admin-count" id="frame-edit-status" style="display:none;"></p>
           <div style="display:flex; gap:8px;">
             <button class="admin-btn secondary" id="frame-reset-btn" style="margin-top:4px;">Restablecer posiciones</button>
@@ -838,6 +883,8 @@
   let autoReturnTimer = null;
   let autoReturnTick = null;
   let capturedPhotoDataUrl = null;
+  let originalPhotoDataUrl = null; // copia de la foto antes de quitarle el fondo
+  let photoHasTransparentBg = false;
 
   /* ---------------- Estrellas decorativas ---------------- */
   (function makeStars(){
@@ -977,9 +1024,9 @@
 
   const CONCIERTO_JUVENTUD_LAYOUT = {
     title:  { visible:false, left:6,  top:5,  width:88 },
-    name:   { visible:true,  left:20, top:27, width:44 },
-    message:{ visible:true,  left:20, top:39, width:44 },
-    photo:  { visible:true,  left:70, top:33, width:26, height:36 }
+    name:   { visible:true,  left:20, top:27, width:44, color:'#fff8f0' },
+    message:{ visible:true,  left:20, top:39, width:44, color:'#fff8f0' },
+    photo:  { visible:true,  left:70, top:33, width:26, height:36, transparent:true }
   };
   const BUILTIN_FRAME_CONCIERTO = {
     id:'concierto-juventud-2026',
@@ -1396,9 +1443,73 @@
     ctx.translate(w,0); ctx.scale(-1,1); // igual al efecto espejo que se ve en pantalla
     try{ ctx.drawImage(video,0,0,w,h); }catch(e){}
     capturedPhotoDataUrl = canvas.toDataURL('image/jpeg',0.92);
+    originalPhotoDataUrl = capturedPhotoDataUrl;
+    photoHasTransparentBg = false;
     photoReviewImg.src = capturedPhotoDataUrl;
+    document.getElementById('photo-review-img').closest('.pr-photo-box').classList.remove('cutout');
+    setBgRemoveStatus('');
+    resetRemoveBgButton();
     showScreen('photoReview');
   }
+
+  /* ---------------- Quitar fondo de la foto (recorte automático) ---------------- */
+  let bgRemovalLibPromise = null;
+  function loadBackgroundRemovalLib(){
+    if(!bgRemovalLibPromise){
+      bgRemovalLibPromise = import('https://esm.sh/@imgly/background-removal@1.5.7');
+    }
+    return bgRemovalLibPromise;
+  }
+
+  function setBgRemoveStatus(text){
+    const el = document.getElementById('pr-bg-status');
+    if(el) el.textContent = text;
+  }
+
+  function resetRemoveBgButton(){
+    const btn = document.getElementById('btn-removebg');
+    if(!btn) return;
+    btn.disabled = false;
+    btn.textContent = '🧼 Quitar fondo';
+  }
+
+  async function removeBackgroundFromPhoto(){
+    const btn = document.getElementById('btn-removebg');
+    if(photoHasTransparentBg){
+      // Ya se quitó el fondo: este clic restaura la foto original
+      capturedPhotoDataUrl = originalPhotoDataUrl;
+      photoReviewImg.src = capturedPhotoDataUrl;
+      photoHasTransparentBg = false;
+      document.getElementById('photo-review-img').closest('.pr-photo-box').classList.remove('cutout');
+      resetRemoveBgButton();
+      setBgRemoveStatus('');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳ Quitando fondo…';
+    setBgRemoveStatus('Esto puede tardar unos segundos la primera vez.');
+    try{
+      const { removeBackground } = await loadBackgroundRemovalLib();
+      const resultBlob = await removeBackground(originalPhotoDataUrl);
+      const cutoutUrl = await new Promise((resolve, reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(resultBlob);
+      });
+      capturedPhotoDataUrl = cutoutUrl;
+      photoReviewImg.src = cutoutUrl;
+      photoHasTransparentBg = true;
+      document.getElementById('photo-review-img').closest('.pr-photo-box').classList.add('cutout');
+      btn.disabled = false;
+      btn.textContent = '↩️ Restaurar fondo original';
+      setBgRemoveStatus('Listo. Elige un marco con la opción "sin caja blanca" para que se adapte mejor.');
+    }catch(err){
+      resetRemoveBgButton();
+      setBgRemoveStatus('No se pudo quitar el fondo automáticamente (revisa tu conexión a internet e inténtalo de nuevo).');
+    }
+  }
+  document.getElementById('btn-removebg').addEventListener('click', removeBackgroundFromPhoto);
 
   /* ---------------- Revelación ---------------- */
   function pickMessage(theme){
@@ -1450,12 +1561,16 @@
     currentName = '';
     nameInput.value = '';
     capturedPhotoDataUrl = null;
+    originalPhotoDataUrl = null;
+    photoHasTransparentBg = false;
     document.getElementById('print-overlay').classList.remove('show');
     showScreen('select');
   }
 
   document.getElementById('btn-retake').addEventListener('click', ()=>{
     capturedPhotoDataUrl = null;
+    originalPhotoDataUrl = null;
+    photoHasTransparentBg = false;
     showScreen('camera');
     runCountdown();
   });
@@ -1633,6 +1748,7 @@
     el.style.top = pos.top + '%';
     el.style.width = pos.width + '%';
     if(pos.height != null) el.style.height = pos.height + '%';
+    el.style.color = pos.color || '';
   }
 
   function openPrintPreview(){
@@ -1661,7 +1777,10 @@
     applyLayoutToElement(document.getElementById('pc-title'), layout.title);
     applyLayoutToElement(pcName, name ? layout.name : { visible:false });
     applyLayoutToElement(document.getElementById('pc-message'), layout.message);
-    applyLayoutToElement(document.getElementById('pc-photo'), layout.photo);
+    const pcPhoto = document.getElementById('pc-photo');
+    applyLayoutToElement(pcPhoto, layout.photo);
+    const useTransparentPhotoBox = photoHasTransparentBg || !!(layout.photo && layout.photo.transparent);
+    pcPhoto.classList.toggle('transparent', useTransparentPhotoBox);
 
     const cardEl = document.getElementById('print-card');
     if(frame.bgUrl){
@@ -1696,6 +1815,8 @@
     photo: document.getElementById('fe-photo')
   };
 
+  const DEFAULT_TEXT_COLORS = { title:'#221c1c', name:'#a5763f', message:'#221c1c' };
+
   function applyEditorLayoutToDOM(){
     Object.keys(feBoxes).forEach(key=>{
       const box = feBoxes[key];
@@ -1707,7 +1828,16 @@
       box.classList.toggle('fe-hidden', !pos.visible);
       const cb = document.getElementById('fe-visible-' + key);
       if(cb) cb.checked = pos.visible;
+      if(DEFAULT_TEXT_COLORS[key]){
+        box.style.color = pos.color || DEFAULT_TEXT_COLORS[key];
+        const colorInput = document.getElementById('fe-color-' + key);
+        if(colorInput) colorInput.value = pos.color || DEFAULT_TEXT_COLORS[key];
+      }
     });
+    const photoBox = feBoxes.photo;
+    photoBox.classList.toggle('transparent', !!(editorLayout.photo && editorLayout.photo.transparent));
+    const transparentCb = document.getElementById('fe-photo-transparent');
+    if(transparentCb) transparentCb.checked = !!(editorLayout.photo && editorLayout.photo.transparent);
   }
 
   function resetEditor(){
@@ -1767,6 +1897,20 @@
       editorLayout[key].visible = e.target.checked;
       feBoxes[key].classList.toggle('fe-hidden', !e.target.checked);
     });
+  });
+
+  ['title','name','message'].forEach(key=>{
+    const colorInput = document.getElementById('fe-color-' + key);
+    if(!colorInput) return;
+    colorInput.addEventListener('input', (e)=>{
+      editorLayout[key].color = e.target.value;
+      feBoxes[key].style.color = e.target.value;
+    });
+  });
+
+  document.getElementById('fe-photo-transparent').addEventListener('change', (e)=>{
+    editorLayout.photo.transparent = e.target.checked;
+    feBoxes.photo.classList.toggle('transparent', e.target.checked);
   });
 
   function clientToPercent(clientX, clientY){
