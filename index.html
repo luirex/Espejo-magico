@@ -462,11 +462,11 @@
   }
   .print-card .pc-name{
     font-family:'Cinzel Decorative','Fredoka',sans-serif; font-weight:700;
-    font-size:clamp(12px,1.8vw,19px); text-align:center;
+    font-size:19px; text-align:center;
     color:#a5763f;
   }
   .print-card .pc-message{
-    font-size:clamp(11px,1.5vw,16px); font-weight:700;
+    font-size:16px; font-weight:700;
     text-align:center; line-height:1.35;
   }
   .print-card .pc-photo-frame{
@@ -534,6 +534,16 @@
   }
   .frame-editor-toggles label{ display:flex; align-items:center; gap:6px; }
   .frame-editor-toggles input{ width:15px; height:15px; }
+  .frame-editor-fonts{
+    display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; font-size:12px; color:var(--ink-dim);
+    align-items:center;
+  }
+  .frame-editor-fonts label{ display:flex; align-items:center; gap:6px; }
+  .frame-editor-fonts input[type="number"]{
+    width:72px; padding:6px 8px; border-radius:7px;
+    border:1px solid var(--glass-strong); background:rgba(255,255,255,.06);
+    color:var(--ink); font:700 13px 'Nunito',sans-serif;
+  }
 
   @media print{
     @page{ size:15cm 10cm; margin:0; }
@@ -757,6 +767,16 @@
             <label>Título <input type="color" id="fe-color-title" value="#221c1c"></label>
             <label>Nombre <input type="color" id="fe-color-name" value="#a5763f"></label>
             <label>Mensaje <input type="color" id="fe-color-message" value="#221c1c"></label>
+          </div>
+          <div class="frame-editor-fonts">
+            <label>Letra del nombre
+              <input type="number" id="fe-font-size-name" min="8" max="60" step="1" value="19">
+              <span>px</span>
+            </label>
+            <label>Letra del mensaje
+              <input type="number" id="fe-font-size-message" min="8" max="60" step="1" value="16">
+              <span>px</span>
+            </label>
           </div>
           <label class="admin-count" style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer;">
             <input type="checkbox" id="fe-photo-transparent"> La foto no lleva caja blanca (se adapta directo al hueco del marco)
@@ -1014,8 +1034,8 @@
 
   const DEFAULT_LAYOUT = {
     title:  { visible:true, left:6,  top:5,  width:88 },
-    name:   { visible:true, left:6,  top:16, width:88 },
-    message:{ visible:true, left:6,  top:30, width:46 },
+    name:   { visible:true, left:6,  top:16, width:88, fontSize:19 },
+    message:{ visible:true, left:6,  top:30, width:46, fontSize:16 },
     photo:  { visible:true, left:56, top:8,  width:38, height:80 }
   };
   function cloneLayout(l){ return JSON.parse(JSON.stringify(l)); }
@@ -1024,8 +1044,8 @@
 
   const CONCIERTO_JUVENTUD_LAYOUT = {
     title:  { visible:false, left:6,  top:5,  width:88 },
-    name:   { visible:true,  left:20, top:27, width:44, color:'#fff8f0' },
-    message:{ visible:true,  left:20, top:39, width:44, color:'#fff8f0' },
+    name:   { visible:true,  left:20, top:27, width:44, color:'#fff8f0', fontSize:19 },
+    message:{ visible:true,  left:20, top:39, width:44, color:'#fff8f0', fontSize:16 },
     photo:  { visible:true,  left:70, top:33, width:26, height:36, transparent:true }
   };
   const BUILTIN_FRAME_CONCIERTO = {
@@ -1749,6 +1769,8 @@
     el.style.width = pos.width + '%';
     if(pos.height != null) el.style.height = pos.height + '%';
     el.style.color = pos.color || '';
+    if(pos.fontSize != null) el.style.fontSize = pos.fontSize + 'px';
+    else el.style.fontSize = '';
   }
 
   function openPrintPreview(){
@@ -1833,6 +1855,13 @@
         const colorInput = document.getElementById('fe-color-' + key);
         if(colorInput) colorInput.value = pos.color || DEFAULT_TEXT_COLORS[key];
       }
+      if(key === 'name' || key === 'message'){
+        const defaultSize = key === 'name' ? 19 : 16;
+        const fontSize = Number(pos.fontSize) || defaultSize;
+        box.style.fontSize = fontSize + 'px';
+        const fontInput = document.getElementById('fe-font-size-' + key);
+        if(fontInput) fontInput.value = fontSize;
+      }
     });
     const photoBox = feBoxes.photo;
     photoBox.classList.toggle('transparent', !!(editorLayout.photo && editorLayout.photo.transparent));
@@ -1911,6 +1940,34 @@
   document.getElementById('fe-photo-transparent').addEventListener('change', (e)=>{
     editorLayout.photo.transparent = e.target.checked;
     feBoxes.photo.classList.toggle('transparent', e.target.checked);
+  });
+
+  // Tamaño de letra configurable para nombre y mensaje
+  ['name','message'].forEach(key=>{
+    const input = document.getElementById('fe-font-size-' + key);
+    if(!input) return;
+
+    input.addEventListener('input', (e)=>{
+      const fallback = key === 'name' ? 19 : 16;
+      let value = Number(e.target.value);
+      if(!Number.isFinite(value)) value = fallback;
+      value = Math.max(8, Math.min(60, value));
+
+      editorLayout[key].fontSize = value;
+      feBoxes[key].style.fontSize = value + 'px';
+      e.target.value = value;
+    });
+
+    input.addEventListener('change', (e)=>{
+      const fallback = key === 'name' ? 19 : 16;
+      let value = Number(e.target.value);
+      if(!Number.isFinite(value)) value = fallback;
+      value = Math.max(8, Math.min(60, value));
+
+      editorLayout[key].fontSize = value;
+      e.target.value = value;
+      applyEditorLayoutToDOM();
+    });
   });
 
   function clientToPercent(clientX, clientY){
